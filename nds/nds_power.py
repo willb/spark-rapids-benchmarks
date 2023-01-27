@@ -194,7 +194,9 @@ def run_query_stream(input_prefix,
                      json_summary_folder=None,
                      delta_unmanaged=False,
                      keep_sc=False,
-                     hive_external=False):
+                     hive_external=False,
+                     app_name_prefix=None,
+                     app_name_suffix=None):
     """run SQL in Spark and record execution time log. The execution time log is saved as a CSV file
     for easy accesibility. TempView Creation time is also recorded.
 
@@ -212,11 +214,15 @@ def run_query_stream(input_prefix,
     """
     execution_time_list = []
     total_time_start = time.time()
+
+    name_prefix = app_name_prefix or os.getenv("NDS_APP_NAME_PREFIX", None) or ""
+    name_suffix = app_name_suffix or os.getenv("NDS_APP_NAME_SUFFIX", None) or ""
+
     # check if it's running specific query or Power Run
     if len(query_dict) == 1:
-        app_name = "NDS - " + list(query_dict.keys())[0]
+        app_name = name_prefix + "NDS - " + list(query_dict.keys())[0] + name_suffix
     else:
-        app_name = "NDS - Power Run"
+        app_name = name_prefix + "NDS - Power Run" + name_suffix
     # Execute Power Run or Specific query in Spark 
     # build Spark Session
     session_builder = SparkSession.builder
@@ -366,6 +372,15 @@ if __name__ == "__main__":
                         'in the stream file will be run. e.g. "query1,query2,query3". Note, use ' +
                         '"_part1" and "_part2" suffix for the following query names: ' +
                         'query14, query23, query24, query39. e.g. query14_part1, query39_part2')
+
+    parser.add_argument("--app_name_prefix",
+        help="text to prepend to the Spark application name for this run (e.g., "
+        + "configuration-specific tags). Overrides any value set in NDS_APP_NAME_PREFIX.",
+    )
+    parser.add_argument("--app_name_suffix",
+        help="text to append to the Spark application name for this run (e.g., " + 
+        "configuration-specific tags). Overrides any value set in NDS_APP_NAME_SUFFIX.",
+    )
     args = parser.parse_args()
     query_dict = gen_sql_from_stream(args.query_stream_file)
     run_query_stream(args.input_prefix,
@@ -381,4 +396,6 @@ if __name__ == "__main__":
                      args.json_summary_folder,
                      args.delta_unmanaged,
                      args.keep_sc,
-                     args.hive)
+                     args.hive,
+                     args.app_name_prefix,
+                     args.app_name_suffix)
